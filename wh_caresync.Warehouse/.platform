@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Warehouse",
+    "displayName": "wh_caresync",
+    "description": ""
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d"
+  }
+}
