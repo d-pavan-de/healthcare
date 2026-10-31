@@ -1,0 +1,93 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "Lookup",
+        "typeProperties": {
+          "source": {
+            "type": "DataWarehouseSource",
+            "sqlReaderQuery": {
+              "value": "SELECT table_id FROM [ctrl].[table_config]\nWHERE is_active = 1 AND source_system='@{pipeline().parameters.source_system}'",
+              "type": "Expression"
+            },
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00"
+          },
+          "datasetSettings": {
+            "type": "DataWarehouseTable",
+            "schema": [],
+            "linkedService": {
+              "name": "wh_caresync",
+              "properties": {
+                "type": "DataWarehouse",
+                "typeProperties": {
+                  "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+                  "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+                  "workspaceId": "00000000-0000-0000-0000-000000000000"
+                },
+                "annotations": []
+              }
+            },
+            "annotations": []
+          },
+          "firstRowOnly": false
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Read Source tables list",
+        "dependsOn": []
+      },
+      {
+        "type": "ForEach",
+        "typeProperties": {
+          "items": {
+            "value": "@activity('Read Source tables list').output.value",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "type": "SetVariable",
+              "typeProperties": {
+                "variableName": "test",
+                "value": {
+                  "value": "@string(item().table_id)",
+                  "type": "Expression"
+                }
+              },
+              "policy": {
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Set variable1",
+              "dependsOn": []
+            }
+          ]
+        },
+        "name": "Ingest Tables data",
+        "dependsOn": [
+          {
+            "activity": "Read Source tables list",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "source_system": {
+        "type": "string"
+      }
+    },
+    "variables": {
+      "test": {
+        "type": "String"
+      }
+    }
+  }
+}
