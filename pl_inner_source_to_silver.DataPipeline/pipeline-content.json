@@ -150,10 +150,176 @@
             ]
           }
         ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "c6411ee9-7538-b930-472c-bb3a7a36e87a",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "source_system": {
+              "value": {
+                "value": "@activity('read table details').output.firstRow.source_system",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "table_name": {
+              "value": {
+                "value": "@activity('read table details').output.firstRow.bronze_table_name",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "landing_timestamp": {
+              "value": {
+                "value": "@variables('start_time')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "source_file_format": {
+              "value": "parquet",
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Invoke Source to bronze",
+        "dependsOn": [
+          {
+            "activity": "Source_to_landing",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "1e2dcbe9-cfe7-8bec-4aa1-a3f44727de18",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "landing_timestamp": {
+              "value": {
+                "value": "@variables('start_time')",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "table_name": {
+              "value": {
+                "value": "@activity('read table details').output.firstRow.silver_table_name",
+                "type": "Expression"
+              },
+              "type": "string"
+            },
+            "merge_keys": {
+              "value": "",
+              "type": "string"
+            },
+            "load_type": {
+              "value": {
+                "value": "@activity('read table details').output.firstRow.load_type",
+                "type": "Expression"
+              },
+              "type": "string"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "bronze to silver",
+        "dependsOn": [
+          {
+            "activity": "Invoke Source to bronze",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "Update ctrl.audit_log\nset status='Success', records_written=@records_written , end_time = GETUTCDATE()\nwhere fabric_run_id = @fabric_run_id",
+                "type": "Expression"
+              },
+              "type": "NonQuery",
+              "parameters": [
+                {
+                  "name": "fabric_run_id",
+                  "type": "String",
+                  "value": {
+                    "value": "@pipeline().parameters.fabric_run_id",
+                    "type": "Expression"
+                  },
+                  "direction": "Input"
+                },
+                {
+                  "name": "records_written",
+                  "type": "Int32",
+                  "value": {
+                    "value": "@activity('bronze to silver').output.result.exitValue",
+                    "type": "Expression"
+                  },
+                  "direction": "Input"
+                }
+              ]
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_caresync",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+              "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "log success",
+        "dependsOn": [
+          {
+            "activity": "bronze to silver",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
       }
     ],
     "parameters": {
       "table_id": {
+        "type": "string"
+      },
+      "fabric_run_id": {
         "type": "string"
       }
     },

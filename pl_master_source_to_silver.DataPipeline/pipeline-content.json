@@ -51,19 +51,97 @@
           },
           "activities": [
             {
-              "type": "SetVariable",
+              "type": "InvokePipeline",
               "typeProperties": {
-                "variableName": "test",
-                "value": {
-                  "value": "@string(item().table_id)",
-                  "type": "Expression"
-                }
+                "parameters": {
+                  "table_id": {
+                    "value": "@item().table_id",
+                    "type": "Expression"
+                  },
+                  "fabric_run_id": {
+                    "value": "@pipeline().parameters.fabric_run_id",
+                    "type": "Expression"
+                  }
+                },
+                "waitOnCompletion": true,
+                "workspaceId": "00000000-0000-0000-0000-000000000000",
+                "pipelineId": "76761726-154c-9ccc-43b2-7dbf2f81fd17",
+                "operationType": "InvokeFabricPipeline"
+              },
+              "externalReferences": {
+                "connection": "71673135-7f9e-471a-aa88-7f717d520ce5"
               },
               "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
                 "secureInput": false,
                 "secureOutput": false
               },
-              "name": "Set variable1",
+              "name": "Invoke source to silver inner",
+              "dependsOn": [
+                {
+                  "activity": "Script1_In-process",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "INSERT INTO ctrl.audit_log(fabric_run_id,table_id,stage,status,start_time,created_timestamp )\nVALUES(@fabric_run_id,@table_id,'source to silver', 'In-progress', GETUTCDATE(), GETUTCDATE())",
+                      "type": "Expression"
+                    },
+                    "type": "NonQuery",
+                    "parameters": [
+                      {
+                        "name": "table_id",
+                        "type": "Int64",
+                        "value": {
+                          "value": "@item().table_id",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "fabric_run_id",
+                        "type": "String",
+                        "value": {
+                          "value": "@pipeline().parameters.fabric_run_id",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      }
+                    ]
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "linkedService": {
+                "name": "wh_caresync",
+                "properties": {
+                  "type": "DataWarehouse",
+                  "typeProperties": {
+                    "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+                    "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Script1_In-process",
               "dependsOn": []
             }
           ]
@@ -77,10 +155,67 @@
             ]
           }
         ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "Update ctrl.audit_log\nset status='Failed', end_time = GETUTCDATE()\nwhere fabric_run_id = @fabric_run_id",
+                "type": "Expression"
+              },
+              "type": "NonQuery",
+              "parameters": [
+                {
+                  "name": "fabric_run_id",
+                  "type": "String",
+                  "value": {
+                    "value": "@pipeline().parameters.fabric_run_id",
+                    "type": "Expression"
+                  },
+                  "direction": "Input"
+                }
+              ]
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_caresync",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+              "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "log failure",
+        "dependsOn": [
+          {
+            "activity": "Ingest Tables data",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ]
       }
     ],
     "parameters": {
       "source_system": {
+        "type": "string"
+      },
+      "fabric_run_id": {
         "type": "string"
       }
     },
