@@ -63,7 +63,7 @@
           "source": {
             "type": "AzureSqlSource",
             "sqlReaderQuery": {
-              "value": "select * from hc.@{activity('read table details').output.firstRow.source_table_name}",
+              "value": "@variables('copy_data_query')",
               "type": "Expression"
             },
             "partitionOption": "None",
@@ -138,13 +138,7 @@
         "name": "Source_to_landing",
         "dependsOn": [
           {
-            "activity": "read table details",
-            "dependencyConditions": [
-              "Succeeded"
-            ]
-          },
-          {
-            "activity": "set starttime",
+            "activity": "check load type",
             "dependencyConditions": [
               "Succeeded"
             ]
@@ -222,7 +216,10 @@
               "type": "string"
             },
             "merge_keys": {
-              "value": "",
+              "value": {
+                "value": "@coalesce(\n    activity('read table details').output.firstRow.merge_keys,\n    ''\n)",
+                "type": "Expression"
+              },
               "type": "string"
             },
             "load_type": {
@@ -307,6 +304,170 @@
         "name": "log success",
         "dependsOn": [
           {
+            "activity": "update watermark",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "value": "@equals(activity('read table details').output.firstRow.load_type,'FULL' )",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "type": "SetVariable",
+              "typeProperties": {
+                "variableName": "copy_data_query",
+                "value": {
+                  "value": "select * from hc.@{activity('read table details').output.firstRow.source_table_name}",
+                  "type": "Expression"
+                }
+              },
+              "policy": {
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Query for FULL Load",
+              "dependsOn": []
+            }
+          ],
+          "ifFalseActivities": [
+            {
+              "type": "Lookup",
+              "typeProperties": {
+                "source": {
+                  "type": "DataWarehouseSource",
+                  "sqlReaderQuery": {
+                    "value": "select watermark_column, watermark_value from [ctrl].[watermark]\nWHERE table_id = @{activity('read table details').output.firstRow.table_id}",
+                    "type": "Expression"
+                  },
+                  "partitionOption": "None",
+                  "queryTimeout": "02:00:00"
+                },
+                "datasetSettings": {
+                  "type": "DataWarehouseTable",
+                  "schema": [],
+                  "linkedService": {
+                    "name": "wh_caresync",
+                    "properties": {
+                      "type": "DataWarehouse",
+                      "typeProperties": {
+                        "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+                        "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+                        "workspaceId": "00000000-0000-0000-0000-000000000000"
+                      },
+                      "annotations": []
+                    }
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "get watermark details",
+              "dependsOn": []
+            },
+            {
+              "type": "SetVariable",
+              "typeProperties": {
+                "variableName": "copy_data_query",
+                "value": {
+                  "value": "select * from hc.@{activity('read table details').output.firstRow.source_table_name}\nwhere @{activity('get watermark details').output.firstRow.watermark_column} > \n    @{concat(''''\n    ,activity('get watermark details').output.firstRow.watermark_value\n    ,''''\n    )}",
+                  "type": "Expression"
+                }
+              },
+              "policy": {
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Query for merge and append",
+              "dependsOn": [
+                {
+                  "activity": "get watermark details",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "name": "check load type",
+        "dependsOn": [
+          {
+            "activity": "read table details",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          },
+          {
+            "activity": "set starttime",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "IfCondition",
+        "typeProperties": {
+          "expression": {
+            "value": "@equals(activity('read table details').output.firstRow.load_type,'FULL' )",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [],
+          "ifFalseActivities": [
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "UPDATE ctrl.watermark\nSET watermark_value = GETUTCDATE()",
+                      "type": "Expression"
+                    },
+                    "type": "NonQuery"
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "linkedService": {
+                "name": "wh_caresync",
+                "properties": {
+                  "type": "DataWarehouse",
+                  "typeProperties": {
+                    "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+                    "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "update watermark column",
+              "dependsOn": []
+            }
+          ]
+        },
+        "name": "update watermark",
+        "dependsOn": [
+          {
             "activity": "bronze to silver",
             "dependencyConditions": [
               "Succeeded"
@@ -325,6 +486,9 @@
     },
     "variables": {
       "start_time": {
+        "type": "String"
+      },
+      "copy_data_query": {
         "type": "String"
       }
     }
