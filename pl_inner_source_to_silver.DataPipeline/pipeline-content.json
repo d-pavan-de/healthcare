@@ -433,10 +433,21 @@
                 "scripts": [
                   {
                     "text": {
-                      "value": "UPDATE ctrl.watermark\nSET watermark_value = GETUTCDATE()",
+                      "value": "UPDATE ctrl.watermark\nSET watermark_value = GETUTCDATE()\nWHERE table_id=@table_id",
                       "type": "Expression"
                     },
-                    "type": "NonQuery"
+                    "type": "NonQuery",
+                    "parameters": [
+                      {
+                        "name": "table_id",
+                        "type": "String",
+                        "value": {
+                          "value": "@pipeline().parameters.table_id",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      }
+                    ]
                   }
                 ],
                 "scriptBlockExecutionTimeout": "02:00:00"
