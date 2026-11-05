@@ -502,30 +502,30 @@
                   "type": "Copy",
                   "typeProperties": {
                     "source": {
-                      "type": "BinarySource",
+                      "type": "DelimitedTextSource",
                       "formatSettings": {
-                        "type": "BinaryReadSettings"
+                        "type": "DelimitedTextReadSettings"
                       },
                       "storeSettings": {
-                        "type": "LakehouseReadSettings",
-                        "recursive": false,
-                        "deleteFilesAfterCompletion": false,
-                        "modifiedDatetimeStart": {
-                          "value": "@activity('read table details').output.firstRow.watermark_column",
-                          "type": "Expression"
-                        }
+                        "type": "AzureBlobStorageReadSettings",
+                        "recursive": false
                       },
                       "datasetSettings": {
-                        "type": "Binary",
+                        "type": "DelimitedText",
                         "typeProperties": {
                           "location": {
-                            "type": "LakehouseLocation",
-                            "folderPath": {
+                            "type": "AzureBlobStorageLocation",
+                            "container": {
                               "value": "@activity('read table details').output.firstRow.source_path",
                               "type": "Expression"
                             }
-                          }
+                          },
+                          "columnDelimiter": ",",
+                          "quoteChar": "\"",
+                          "escapeChar": "\\",
+                          "firstRowAsHeader": true
                         },
+                        "schema": [],
                         "linkedService": {
                           "name": "lh_caresync",
                           "properties": {
@@ -542,21 +542,31 @@
                       }
                     },
                     "sink": {
-                      "type": "BinarySink",
+                      "type": "DelimitedTextSink",
+                      "formatSettings": {
+                        "type": "DelimitedTextWriteSettings",
+                        "fileExtension": ".txt"
+                      },
                       "storeSettings": {
-                        "type": "LakehouseWriteSettings"
+                        "type": "AzureBlobStorageWriteSettings"
                       },
                       "datasetSettings": {
-                        "type": "Binary",
+                        "type": "DelimitedText",
                         "typeProperties": {
                           "location": {
-                            "type": "LakehouseLocation",
+                            "type": "AzureBlobStorageLocation",
+                            "container": "landing",
                             "folderPath": {
-                              "value": "@concat(     'landing/',\n    activity('read table details').output.firstRow.source_system,     '/',     activity('read table details').output.firstRow.source_table_name,     '/',     variables('start_time') )",
+                              "value": "@concat(     \n    activity('read table details').output.firstRow.source_system,     '/',     activity('read table details').output.firstRow.source_table_name,     '/',     variables('start_time') )",
                               "type": "Expression"
                             }
-                          }
+                          },
+                          "columnDelimiter": ",",
+                          "quoteChar": "\"",
+                          "escapeChar": "\\",
+                          "firstRowAsHeader": true
                         },
+                        "schema": [],
                         "linkedService": {
                           "name": "lh_caresync",
                           "properties": {
@@ -570,6 +580,14 @@
                           }
                         },
                         "annotations": []
+                      }
+                    },
+                    "translator": {
+                      "type": "TabularTranslator",
+                      "typeConversion": true,
+                      "typeConversionSettings": {
+                        "allowDataTruncation": true,
+                        "treatBooleanAsNumber": false
                       }
                     },
                     "enableStaging": false

@@ -22,10 +22,10 @@
 
 # PARAMETERS CELL ********************
 
-source_system="Azure SQL"
-table_name="doctors"
-landing_timestamp="2026-10-31_11-11-27"
-source_file_format="parquet"
+source_system="lh_csv"
+table_name="lab-results"
+landing_timestamp="2026-11-05_10-11-48"
+source_file_format="csv"
 
 
 # METADATA ********************

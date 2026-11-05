@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "NB_hospital_daily_summary"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f952d5a5-538f-a56e-493b-37117b7e0594"
+  }
+}
