@@ -58,94 +58,6 @@
         "dependsOn": []
       },
       {
-        "type": "Copy",
-        "typeProperties": {
-          "source": {
-            "type": "AzureSqlSource",
-            "sqlReaderQuery": {
-              "value": "@variables('copy_data_query')",
-              "type": "Expression"
-            },
-            "partitionOption": "None",
-            "queryTimeout": "02:00:00",
-            "datasetSettings": {
-              "type": "AzureSqlTable",
-              "typeProperties": {
-                "database": "demoDB"
-              },
-              "schema": [],
-              "externalReferences": {
-                "connection": "3268382c-5a91-41df-8702-ead6a247125c"
-              },
-              "annotations": []
-            }
-          },
-          "sink": {
-            "type": "ParquetSink",
-            "formatSettings": {
-              "type": "ParquetWriteSettings",
-              "enableVertiParquet": true
-            },
-            "storeSettings": {
-              "type": "AzureBlobStorageWriteSettings"
-            },
-            "datasetSettings": {
-              "type": "Parquet",
-              "typeProperties": {
-                "location": {
-                  "type": "AzureBlobStorageLocation",
-                  "container": "landing",
-                  "folderPath": {
-                    "value": "@concat(     \n    activity('read table details').output.firstRow.source_system,     '/',     activity('read table details').output.firstRow.source_table_name,     '/',     variables('start_time') )",
-                    "type": "Expression"
-                  }
-                },
-                "compressionCodec": "snappy"
-              },
-              "schema": [],
-              "linkedService": {
-                "name": "lh_caresync",
-                "properties": {
-                  "type": "Lakehouse",
-                  "typeProperties": {
-                    "artifactId": "9a4d5945-f0cb-bab1-4b92-eb135f460371",
-                    "workspaceId": "00000000-0000-0000-0000-000000000000",
-                    "rootFolder": "Files"
-                  },
-                  "annotations": []
-                }
-              },
-              "annotations": []
-            }
-          },
-          "translator": {
-            "type": "TabularTranslator",
-            "typeConversion": true,
-            "typeConversionSettings": {
-              "allowDataTruncation": true,
-              "treatBooleanAsNumber": false
-            }
-          },
-          "enableStaging": false
-        },
-        "policy": {
-          "timeout": "0.12:00:00",
-          "retry": 0,
-          "retryIntervalInSeconds": 30,
-          "secureInput": false,
-          "secureOutput": false
-        },
-        "name": "Source_to_landing",
-        "dependsOn": [
-          {
-            "activity": "check load type",
-            "dependencyConditions": [
-              "Succeeded"
-            ]
-          }
-        ]
-      },
-      {
         "type": "TridentNotebook",
         "typeProperties": {
           "notebookId": "c6411ee9-7538-b930-472c-bb3a7a36e87a",
@@ -173,7 +85,10 @@
               "type": "string"
             },
             "source_file_format": {
-              "value": "parquet",
+              "value": {
+                "value": "@coalesce(activity('read table details').output.firstRow.source_file_format\n        ,'')",
+                "type": "Expression"
+              },
               "type": "string"
             }
           }
@@ -188,7 +103,7 @@
         "name": "Invoke Source to bronze",
         "dependsOn": [
           {
-            "activity": "Source_to_landing",
+            "activity": "source_system",
             "dependencyConditions": [
               "Succeeded"
             ]
@@ -480,6 +395,204 @@
         "dependsOn": [
           {
             "activity": "bronze to silver",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Switch",
+        "typeProperties": {
+          "on": {
+            "value": "@activity('read table details').output.firstRow.source_system",
+            "type": "Expression"
+          },
+          "cases": [
+            {
+              "value": "Azure SQL",
+              "activities": [
+                {
+                  "type": "Copy",
+                  "typeProperties": {
+                    "source": {
+                      "type": "AzureSqlSource",
+                      "sqlReaderQuery": {
+                        "value": "@variables('copy_data_query')",
+                        "type": "Expression"
+                      },
+                      "partitionOption": "None",
+                      "queryTimeout": "02:00:00",
+                      "datasetSettings": {
+                        "type": "AzureSqlTable",
+                        "typeProperties": {
+                          "database": "demoDB"
+                        },
+                        "schema": [],
+                        "externalReferences": {
+                          "connection": "3268382c-5a91-41df-8702-ead6a247125c"
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "sink": {
+                      "type": "ParquetSink",
+                      "formatSettings": {
+                        "type": "ParquetWriteSettings",
+                        "enableVertiParquet": true
+                      },
+                      "storeSettings": {
+                        "type": "AzureBlobStorageWriteSettings"
+                      },
+                      "datasetSettings": {
+                        "type": "Parquet",
+                        "typeProperties": {
+                          "location": {
+                            "type": "AzureBlobStorageLocation",
+                            "container": "landing",
+                            "folderPath": {
+                              "value": "@concat(     \n    activity('read table details').output.firstRow.source_system,     '/',     activity('read table details').output.firstRow.source_table_name,     '/',     variables('start_time') )",
+                              "type": "Expression"
+                            }
+                          },
+                          "compressionCodec": "snappy"
+                        },
+                        "schema": [],
+                        "linkedService": {
+                          "name": "lh_caresync",
+                          "properties": {
+                            "type": "Lakehouse",
+                            "typeProperties": {
+                              "artifactId": "9a4d5945-f0cb-bab1-4b92-eb135f460371",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000",
+                              "rootFolder": "Files"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "translator": {
+                      "type": "TabularTranslator",
+                      "typeConversion": true,
+                      "typeConversionSettings": {
+                        "allowDataTruncation": true,
+                        "treatBooleanAsNumber": false
+                      }
+                    },
+                    "enableStaging": false
+                  },
+                  "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureInput": false,
+                    "secureOutput": false
+                  },
+                  "name": "Source_to_landing",
+                  "dependsOn": []
+                }
+              ]
+            },
+            {
+              "value": "lh_csv",
+              "activities": [
+                {
+                  "type": "Copy",
+                  "typeProperties": {
+                    "source": {
+                      "type": "BinarySource",
+                      "formatSettings": {
+                        "type": "BinaryReadSettings"
+                      },
+                      "storeSettings": {
+                        "type": "LakehouseReadSettings",
+                        "recursive": false,
+                        "deleteFilesAfterCompletion": false,
+                        "modifiedDatetimeStart": {
+                          "value": "@activity('read table details').output.firstRow.watermark_column",
+                          "type": "Expression"
+                        }
+                      },
+                      "datasetSettings": {
+                        "type": "Binary",
+                        "typeProperties": {
+                          "location": {
+                            "type": "LakehouseLocation",
+                            "folderPath": {
+                              "value": "@activity('read table details').output.firstRow.source_path",
+                              "type": "Expression"
+                            }
+                          }
+                        },
+                        "linkedService": {
+                          "name": "lh_caresync",
+                          "properties": {
+                            "type": "Lakehouse",
+                            "typeProperties": {
+                              "artifactId": "9a4d5945-f0cb-bab1-4b92-eb135f460371",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000",
+                              "rootFolder": "Files"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "sink": {
+                      "type": "BinarySink",
+                      "storeSettings": {
+                        "type": "LakehouseWriteSettings"
+                      },
+                      "datasetSettings": {
+                        "type": "Binary",
+                        "typeProperties": {
+                          "location": {
+                            "type": "LakehouseLocation",
+                            "folderPath": {
+                              "value": "@concat(     'landing/',\n    activity('read table details').output.firstRow.source_system,     '/',     activity('read table details').output.firstRow.source_table_name,     '/',     variables('start_time') )",
+                              "type": "Expression"
+                            }
+                          }
+                        },
+                        "linkedService": {
+                          "name": "lh_caresync",
+                          "properties": {
+                            "type": "Lakehouse",
+                            "typeProperties": {
+                              "artifactId": "9a4d5945-f0cb-bab1-4b92-eb135f460371",
+                              "workspaceId": "00000000-0000-0000-0000-000000000000",
+                              "rootFolder": "Files"
+                            },
+                            "annotations": []
+                          }
+                        },
+                        "annotations": []
+                      }
+                    },
+                    "enableStaging": false
+                  },
+                  "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureInput": false,
+                    "secureOutput": false
+                  },
+                  "name": "Copy CSV Files to landing",
+                  "dependsOn": []
+                }
+              ]
+            }
+          ],
+          "defaultActivities": []
+        },
+        "name": "source_system",
+        "dependsOn": [
+          {
+            "activity": "check load type",
             "dependencyConditions": [
               "Succeeded"
             ]

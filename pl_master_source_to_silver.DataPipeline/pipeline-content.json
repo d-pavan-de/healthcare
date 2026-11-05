@@ -81,7 +81,7 @@
               "name": "Invoke source to silver inner",
               "dependsOn": [
                 {
-                  "activity": "Script1_In-process",
+                  "activity": "Log_In-process",
                   "dependencyConditions": [
                     "Succeeded"
                   ]
@@ -141,7 +141,7 @@
                 "secureInput": false,
                 "secureOutput": false
               },
-              "name": "Script1_In-process",
+              "name": "Log_In-process",
               "dependsOn": []
             }
           ]
