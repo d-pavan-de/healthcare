@@ -107,11 +107,15 @@
 
 # CELL ********************
 
-from pyspark.sql import functions as F
+#from pyspark.sql import functions as F
 
 updated_df = spark.table("lh_caresync.gold.hospital_daily_summary")
 record_count = updated_df.count()
 print("lh_caresync.gold.hospital_daily_summary record count:", record_count)
+
+# Return the record_count to the calling pipeline / parent notebook
+# In Fabric pipelines, this value can be captured as the notebook activity output
+notebookutils.notebook.exit(str(record_count))
 
 # METADATA ********************
 

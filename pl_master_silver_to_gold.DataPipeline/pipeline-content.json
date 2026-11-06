@@ -1,0 +1,367 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "Lookup",
+        "typeProperties": {
+          "source": {
+            "type": "DataWarehouseSource",
+            "sqlReaderQuery": {
+              "value": "SELECT table_id, gold_table_name FROM [ctrl].[table_config]\nWHERE is_active = 1 AND source_system='silver'",
+              "type": "Expression"
+            },
+            "partitionOption": "None",
+            "queryTimeout": "02:00:00"
+          },
+          "datasetSettings": {
+            "type": "DataWarehouseTable",
+            "schema": [],
+            "linkedService": {
+              "name": "wh_caresync",
+              "properties": {
+                "type": "DataWarehouse",
+                "typeProperties": {
+                  "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+                  "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+                  "workspaceId": "00000000-0000-0000-0000-000000000000"
+                },
+                "annotations": []
+              }
+            },
+            "annotations": []
+          },
+          "firstRowOnly": false
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "Read silver tables list",
+        "dependsOn": []
+      },
+      {
+        "type": "ForEach",
+        "typeProperties": {
+          "items": {
+            "value": "@activity('Read silver tables list').output.value",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "INSERT INTO ctrl.audit_log(fabric_run_id,table_id,stage,status,start_time,created_timestamp )\nVALUES(@fabric_run_id,@table_id,'silver to gold', 'In-progress', GETUTCDATE(), GETUTCDATE())",
+                      "type": "Expression"
+                    },
+                    "type": "NonQuery",
+                    "parameters": [
+                      {
+                        "name": "table_id",
+                        "type": "Int64",
+                        "value": {
+                          "value": "@item().table_id",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "fabric_run_id",
+                        "type": "String",
+                        "value": {
+                          "value": "@pipeline().parameters.fabric_run_id",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      }
+                    ]
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "linkedService": {
+                "name": "wh_caresync",
+                "properties": {
+                  "type": "DataWarehouse",
+                  "typeProperties": {
+                    "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+                    "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Log_In-process",
+              "dependsOn": []
+            },
+            {
+              "type": "TridentNotebook",
+              "typeProperties": {
+                "notebookId": {
+                  "value": "@variables('notebook_guid')",
+                  "type": "Expression"
+                },
+                "workspaceId": "a4385c18-728e-40ab-8981-6717e6f19984"
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "invoke notebook",
+              "dependsOn": [
+                {
+                  "activity": "assign notebook guid",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Script",
+              "typeProperties": {
+                "scripts": [
+                  {
+                    "text": {
+                      "value": "Update ctrl.audit_log\nset status='Success', records_written=@records_written , end_time = GETUTCDATE()\nwhere fabric_run_id = @fabric_run_id",
+                      "type": "Expression"
+                    },
+                    "type": "NonQuery",
+                    "parameters": [
+                      {
+                        "name": "records_written",
+                        "type": "Int64",
+                        "value": {
+                          "value": "@activity('invoke notebook').output.result.exitValue",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      },
+                      {
+                        "name": "fabric_run_id",
+                        "type": "String",
+                        "value": {
+                          "value": "@pipeline().parameters.fabric_run_id",
+                          "type": "Expression"
+                        },
+                        "direction": "Input"
+                      }
+                    ]
+                  }
+                ],
+                "scriptBlockExecutionTimeout": "02:00:00"
+              },
+              "linkedService": {
+                "name": "wh_caresync",
+                "properties": {
+                  "type": "DataWarehouse",
+                  "typeProperties": {
+                    "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+                    "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000"
+                  },
+                  "annotations": []
+                }
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Log_In-success",
+              "dependsOn": [
+                {
+                  "activity": "invoke notebook",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "Switch",
+              "typeProperties": {
+                "on": {
+                  "value": "@item().gold_table_name",
+                  "type": "Expression"
+                },
+                "cases": [
+                  {
+                    "value": "patient_360",
+                    "activities": [
+                      {
+                        "type": "SetVariable",
+                        "typeProperties": {
+                          "variableName": "notebook_guid",
+                          "value": "9d849280-4066-493d-bba0-c24a5d32100b"
+                        },
+                        "policy": {
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Set patient_360 guid",
+                        "dependsOn": []
+                      }
+                    ]
+                  },
+                  {
+                    "value": "hospital_daily_summary",
+                    "activities": [
+                      {
+                        "type": "SetVariable",
+                        "typeProperties": {
+                          "variableName": "notebook_guid",
+                          "value": "7b7e0594-3711-493b-a56e-538ff952d5a5"
+                        },
+                        "policy": {
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Set hospital_daily_summary guid",
+                        "dependsOn": []
+                      }
+                    ]
+                  },
+                  {
+                    "value": "lab_test_trends",
+                    "activities": [
+                      {
+                        "type": "SetVariable",
+                        "typeProperties": {
+                          "variableName": "notebook_guid",
+                          "value": "a56d8374-9097-40e7-b1e5-f797715f85ba"
+                        },
+                        "policy": {
+                          "secureInput": false,
+                          "secureOutput": false
+                        },
+                        "name": "Set lab_test_trends guid",
+                        "dependsOn": []
+                      }
+                    ]
+                  }
+                ],
+                "defaultActivities": []
+              },
+              "name": "assign notebook guid",
+              "dependsOn": [
+                {
+                  "activity": "Log_In-process",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "name": "silver to gold transformation",
+        "dependsOn": [
+          {
+            "activity": "Read silver tables list",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "Update ctrl.audit_log\nset status='Failed', end_time = GETUTCDATE()\nwhere fabric_run_id = @fabric_run_id",
+                "type": "Expression"
+              },
+              "type": "NonQuery",
+              "parameters": [
+                {
+                  "name": "fabric_run_id",
+                  "type": "String",
+                  "value": {
+                    "value": "@pipeline().parameters.fabric_run_id",
+                    "type": "Expression"
+                  },
+                  "direction": "Input"
+                }
+              ]
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_caresync",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "7085a402-9fa6-b7ff-4986-77f06dff3f0d",
+              "endpoint": "6et5vohuhdxedivvzttrkcbuja-dbodrjeookvubcmbm4l6n4mzqq.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "log failure",
+        "dependsOn": [
+          {
+            "activity": "silver to gold transformation",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Fail",
+        "typeProperties": {
+          "message": "silver to gold transformation failed",
+          "errorCode": "500"
+        },
+        "name": "Fail1",
+        "dependsOn": [
+          {
+            "activity": "silver to gold transformation",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "fabric_run_id": {
+        "type": "string"
+      }
+    },
+    "variables": {
+      "notebook_guid": {
+        "type": "String"
+      }
+    }
+  }
+}

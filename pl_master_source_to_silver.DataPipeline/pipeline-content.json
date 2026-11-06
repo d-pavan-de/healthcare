@@ -209,6 +209,22 @@
             ]
           }
         ]
+      },
+      {
+        "type": "Fail",
+        "typeProperties": {
+          "message": "data ingesation failed",
+          "errorCode": "500"
+        },
+        "name": "Fail1",
+        "dependsOn": [
+          {
+            "activity": "Ingest Tables data",
+            "dependencyConditions": [
+              "Failed"
+            ]
+          }
+        ]
       }
     ],
     "parameters": {
@@ -217,11 +233,6 @@
       },
       "fabric_run_id": {
         "type": "string"
-      }
-    },
-    "variables": {
-      "test": {
-        "type": "String"
       }
     }
   }

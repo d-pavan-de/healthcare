@@ -30,8 +30,6 @@
 
 # CELL ********************
 
-# Create lab test trends gold table (Fabric PySpark translation of Databricks %sql cell)
-
 # NOTE:
 # - This assumes the source tables `lh_caresync.silver.labresults` and
 #   `lh_caresync.silver.calendar` are available in this Spark catalog.
@@ -99,6 +97,24 @@ SELECT
   ) AS abnormal_rate_change_pct
 FROM enriched
 """)
+
+
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+# Count records in the created lab_test_trends table
+record_count = spark.table("lh_caresync.gold.lab_test_trends").count()
+print("lh_caresync.gold.lab_test_trends record count:", record_count)
+
+# Return the record_count to the calling pipeline / parent notebook
+notebookutils.notebook.exit(str(record_count))
 
 # METADATA ********************
 

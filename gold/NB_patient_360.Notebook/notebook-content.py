@@ -92,3 +92,23 @@ display(spark.table("lh_caresync.gold.patient_360").limit(20))
 # META   "language": "python",
 # META   "language_group": "synapse_pyspark"
 # META }
+
+# CELL ********************
+
+# Return patient_360 row_count as exit value for calling pipeline
+# from pyspark.sql import SparkSession
+
+# Recompute row_count to ensure this cell is self-contained
+row_count = spark.table("lh_caresync.gold.patient_360").count()
+print(f"lh_caresync.gold.patient_360 row count (exit value): {row_count}")
+
+# Return the record count to the calling pipeline / parent notebook
+notebookutils.notebook.exit(str(row_count))
+
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
