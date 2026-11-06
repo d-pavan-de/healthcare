@@ -96,6 +96,32 @@
             ]
           }
         ]
+      },
+      {
+        "type": "Office365Email",
+        "typeProperties": {
+          "body": "<p>@{pipeline().Pipeline} with @{pipeline().RunId} id completed successfully</p>",
+          "to": "abc@xyz.com",
+          "subject": "pipeline run completion"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "on Success Email",
+        "state": "Inactive",
+        "onInactiveMarkAs": "Succeeded",
+        "dependsOn": [
+          {
+            "activity": "silver to gold",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
       }
     ]
   }
